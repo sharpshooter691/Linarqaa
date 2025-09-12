@@ -1,0 +1,276 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom utilities for notifications */
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+@layer base {
+  html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    overflow-x: hidden;font-size: 1.125rem;
+  }
+
+  body {
+    background-color: var(--mode-background, #fefce8);
+    transition: background-color 0.3s ease;
+  }
+
+  #root {
+    min-height: 100vh;
+    background-color: var(--mode-background, #fefce8);
+    transition: background-color 0.3s ease;
+  }
+
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 221.2 83.2% 53.3%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222.2 84% 4.9%;
+    --muted: 210 40% 96%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96%;
+    --accent-foreground: 222.2 84% 4.9%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 221.2 83.2% 53.3%;
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 217.2 91.2% 59.8%;
+    --primary-foreground: 222.2 84% 4.9%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 224.3 76.3% 94.1%;
+  }
+}
+
+@layer components {
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: var(--mode-surface, #ffffff);
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: var(--mode-border, #d1d5db);
+    border-radius: 4px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--mode-primary, #f59e0b);
+  }
+
+  /* Focus styles */
+  *:focus {
+    outline: 2px solid var(--mode-primary, #f59e0b);
+    outline-offset: 2px;
+  }
+
+  /* Selection styles */
+  ::selection {
+    background: var(--mode-primary, #f59e0b);
+    color: white;
+  }
+}
+
+/* RTL Support */
+[dir="rtl"] {
+  direction: rtl;
+  text-align: right;
+}
+
+[dir="rtl"] .rtl-flip {
+  transform: scaleX(-1);
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: hsl(var(--muted));
+}
+
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted-foreground));
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--foreground));
+}
+
+/* Mode-specific styles */
+.mode-kindergarten {
+  --mode-primary: 45 100% 51%;
+  --mode-secondary: 25 95% 53%;
+  --mode-accent: 60 100% 50%;
+  --mode-background: 60 100% 98%;
+  --mode-surface: 0 0% 100%;
+  --mode-text: 20 14% 4%;
+  --mode-text-secondary: 25 14% 46%;
+  --mode-border: 45 100% 90%;
+  --mode-shadow: 45 100% 90%;
+}
+
+/* Print styles for professional documents */
+@media print {
+  /* Hide all UI elements */
+  nav, 
+  header, 
+  footer, 
+  .sidebar, 
+  .navbar, 
+  .top-bar,
+  .notification-bell,
+  .language-selector,
+  .user-menu,
+  .toast,
+  .toaster,
+  [data-radix-toast-viewport],
+  .print\\:hidden {
+    display: none !important;
+  }
+  
+  /* Remove margins and padding */
+  body {
+    margin: 0 !important;
+    padding: 0 !important;
+    background: white !important;
+  }
+  
+  /* Ensure colors print correctly */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    color-adjust: exact !important;
+  }
+  
+  /* Page setup */
+  @page {
+    margin: 0.5in;
+    size: A4;
+  }
+  
+  /* Hide scrollbars */
+  ::-webkit-scrollbar {
+    display: none;
+  }
+  
+  /* Ensure text is black for better printing */
+  .text-gray-900,
+  .text-gray-800,
+  .text-gray-700 {
+    color: black !important;
+  }
+  
+  /* Maintain background colors for important elements */
+  .bg-red-50,
+  .bg-green-50,
+  .bg-yellow-50,
+  .bg-gray-50,
+  .bg-gray-100 {
+    background-color: inherit !important;
+  }
+}
+
+.mode-extra-courses {
+  --mode-primary: 220 13% 18%;
+  --mode-secondary: 220 13% 25%;
+  --mode-accent: 220 13% 35%;
+  --mode-background: 220 13% 8%;
+  --mode-surface: 220 13% 12%;
+  --mode-text: 0 0% 100%;
+  --mode-text-secondary: 220 13% 70%;
+  --mode-border: 220 13% 20%;
+  --mode-shadow: 220 13% 5%;
+}
+
+/* Mode transitions */
+.mode-kindergarten,
+.mode-extra-courses {
+  transition: all 0.3s ease-in-out;
+}
+
+/* Mode-specific component styles */
+.mode-kindergarten .bg-gray-50 {
+  background-color: hsl(var(--mode-background));
+}
+
+.mode-kindergarten .bg-white {
+  background-color: hsl(var(--mode-surface));
+}
+
+.mode-kindergarten .text-gray-900 {
+  color: hsl(var(--mode-text));
+}
+
+.mode-kindergarten .text-gray-500 {
+  color: hsl(var(--mode-text-secondary));
+}
+
+.mode-kindergarten .border-gray-200 {
+  border-color: hsl(var(--mode-border));
+}
+
+.mode-kindergarten .shadow-sm {
+  box-shadow: 0 1px 2px 0 hsl(var(--mode-shadow) / 0.05);
+}
+
+.mode-extra-courses .bg-gray-50 {
+  background-color: hsl(var(--mode-background));
+}
+
+.mode-extra-courses .bg-white {
+  background-color: hsl(var(--mode-surface));
+}
+
+.mode-extra-courses .text-gray-900 {
+  color: hsl(var(--mode-text));
+}
+
+.mode-extra-courses .text-gray-500 {
+  color: hsl(var(--mode-text-secondary));
+}
+
+.mode-extra-courses .border-gray-200 {
+  border-color: hsl(var(--mode-border));
+}
+
+.mode-extra-courses .shadow-sm {
+  box-shadow: 0 1px 2px 0 hsl(var(--mode-shadow) / 0.05);
+} 

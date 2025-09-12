@@ -1,0 +1,708 @@
+import React, { useState, useEffect } from 'react';
+import { useAuth } from '@/hooks/useAuth';
+import { api } from '@/lib/api';
+import { useToast } from '@/hooks/use-toast';
+import { Edit, Trash2, Plus, ChevronDown, ChevronRight, Camera, User } from 'lucide-react';
+import PhotoModal from '@/components/modals/PhotoModal';
+
+interface ExtraStudent {
+  id: string;
+  firstName: string;
+  lastName: string;
+  firstNameArabic?: string;
+  lastNameArabic?: string;
+  birthDate: string;
+  photoUrl?: string;
+  responsibleName: string;
+  responsibleNameArabic?: string;
+  responsiblePhone: string;
+  status: 'ACTIVE' | 'INACTIVE';
+  createdAt: string;
+  updatedAt: string;
+}
+
+const ExtraStudentsPage = () => {
+  const { user } = useAuth();
+  const { toast } = useToast();
+  
+  const [students, setStudents] = useState<ExtraStudent[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [studentToDelete, setStudentToDelete] = useState<ExtraStudent | null>(null);
+  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
+  const [showPhotoModal, setShowPhotoModal] = useState(false);
+  const [selectedStudent, setSelectedStudent] = useState<ExtraStudent | null>(null);
+  const [editingStudent, setEditingStudent] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchStudents();
+  }, []);
+
+  const fetchStudents = async () => {
+    try {
+      setLoading(true);
+      const response = await api.get('/api/extra-students');
+      console.log('API Response:', response.data);
+      
+      if (response.data && response.data.content && Array.isArray(response.data.content)) {
+        setStudents(response.data.content);
+      } else if (Array.isArray(response.data)) {
+        setStudents(response.data);
+      } else {
+        setStudents([]);
+      }
+    } catch (error) {
+      console.error('Error fetching students:', error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de charger les étudiants",
+        variant: "destructive"
+      });
+      setStudents([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteStudent = async (studentId: string) => {
+    try {
+      await api.delete(`/api/extra-students/${studentId}`);
+      toast({
+        title: "Succès",
+        description: "Étudiant supprimé avec succès",
+      });
+      fetchStudents();
+    } catch (error) {
+      console.error('Error deleting student:', error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de supprimer l'étudiant",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const confirmDelete = (student: ExtraStudent) => {
+    setStudentToDelete(student);
+    setShowDeleteModal(true);
+  };
+
+  const executeDelete = () => {
+    if (studentToDelete) {
+      handleDeleteStudent(studentToDelete.id);
+      setShowDeleteModal(false);
+      setStudentToDelete(null);
+    }
+  };
+
+  const toggleRow = (studentId: string) => {
+    const newExpandedRows = new Set(expandedRows);
+    if (newExpandedRows.has(studentId)) {
+      newExpandedRows.delete(studentId);
+    } else {
+      newExpandedRows.add(studentId);
+    }
+    setExpandedRows(newExpandedRows);
+  };
+
+  const isRowExpanded = (studentId: string) => expandedRows.has(studentId);
+
+  const handleUpdatePhoto = async (studentId: string, photoUrl: string) => {
+    try {
+      await api.patch(`/api/extra-students/${studentId}/photo`, { photoUrl });
+      toast({
+        title: "Succès",
+        description: "Photo de profil mise à jour",
+      });
+      fetchStudents();
+    } catch (error) {
+      console.error('Error updating photo:', error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de mettre à jour la photo",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleUploadFile = async (studentId: string, file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    await api.post(`/api/extra-students/${studentId}/upload-photo`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    
+    fetchStudents();
+  };
+
+  const handleUploadCamera = async (studentId: string, base64Data: string) => {
+    await api.post(`/api/extra-students/${studentId}/upload-camera-photo`, {
+      base64Data: base64Data
+    });
+    
+    fetchStudents();
+  };
+
+  const openPhotoModal = (student: ExtraStudent) => {
+    setSelectedStudent(student);
+    setShowPhotoModal(true);
+  };
+
+  const startEditing = (student: ExtraStudent) => {
+    setEditingStudent(student.id);
+  };
+
+  const cancelEditing = () => {
+    setEditingStudent(null);
+    if (editingStudent) {
+      const newExpandedRows = new Set(expandedRows);
+      newExpandedRows.delete(editingStudent);
+      setExpandedRows(newExpandedRows);
+    }
+  };
+
+  const saveStudent = async (student: ExtraStudent) => {
+    try {
+      const form = document.querySelector(`[data-student-id="${student.id}"]`) as HTMLFormElement;
+      if (!form) {
+        toast({
+          title: "Erreur",
+          description: "Formulaire non trouvé",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const formData = new FormData(form);
+      const updatedStudent = {
+        firstName: formData.get('firstName') as string,
+        lastName: formData.get('lastName') as string,
+        firstNameArabic: formData.get('firstNameArabic') as string,
+        lastNameArabic: formData.get('lastNameArabic') as string,
+        birthDate: formData.get('birthDate') as string,
+        responsibleName: formData.get('responsibleName') as string,
+        responsibleNameArabic: formData.get('responsibleNameArabic') as string,
+        responsiblePhone: formData.get('responsiblePhone') as string,
+        photoUrl: student.photoUrl,
+      };
+
+      await api.put(`/api/extra-students/${student.id}`, updatedStudent);
+      
+      toast({
+        title: "Succès",
+        description: `Étudiant ${updatedStudent.firstName} ${updatedStudent.lastName} sauvegardé`,
+      });
+      
+      setEditingStudent(null);
+      const newExpandedRows = new Set(expandedRows);
+      newExpandedRows.delete(student.id);
+      setExpandedRows(newExpandedRows);
+      
+      fetchStudents();
+    } catch (error) {
+      console.error('Error saving student:', error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de sauvegarder l'étudiant",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const getPhotoUrl = (photoUrl?: string) => {
+    if (!photoUrl) return '';
+    if (photoUrl.startsWith('http://') || photoUrl.startsWith('https://')) {
+      return photoUrl;
+    }
+    return `http://localhost:8080/api${photoUrl}`;
+  };
+
+  const getStatusBadge = (status: string) => {
+    if (status === 'ACTIVE') {
+      return <span className='inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800'>Actif</span>;
+    }
+    return <span className='inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800'>Inactif</span>;
+  };
+
+  const filteredStudents = students.filter(student => {
+    const matchesSearch = 
+      student.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      student.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      student.responsibleName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      student.responsiblePhone.includes(searchTerm);
+    
+    const matchesStatus = statusFilter === '' || student.status === statusFilter;
+    
+    return matchesSearch && matchesStatus;
+  });
+
+  if (loading) {
+    return (
+      <div className='space-y-6'>
+        <div>
+          <h1 className='text-2xl font-bold text-gray-900'>Étudiants Extra</h1>
+          <p className='text-gray-600'>Gestion des étudiants des cours supplémentaires</p>
+        </div>
+        <div className='flex items-center justify-center h-64'>
+          <div className='text-center'>
+            <div className='animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto'></div>
+            <p className='mt-2 text-gray-600'>Chargement des étudiants...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className='space-y-6'>
+      <div>
+        <h1 className='text-2xl font-bold text-gray-900'>Étudiants Extra</h1>
+        <p className='text-gray-600'>
+          Gestion des étudiants des cours supplémentaires - {students.length} étudiant(s) trouvé(s)
+        </p>
+      </div>
+
+      <div className='rounded-lg shadow p-6 bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200'>
+        <div className='flex gap-4 mb-4'>
+          <input
+            type='text'
+            placeholder='Rechercher un étudiant...'
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className='flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500'
+          />
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className='border rounded px-3 py-2'
+          >
+            <option value=''>Tous les statuts</option>
+            <option value='ACTIVE'>Actif</option>
+            <option value='INACTIVE'>Inactif</option>
+          </select>
+          <button
+            onClick={() => {
+              setSearchTerm('');
+              setStatusFilter('');
+            }}
+            className='px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700'
+          >
+            Réinitialiser
+          </button>
+        </div>
+
+        <div className='overflow-x-auto'>
+          <table className='min-w-full divide-y divide-gray-200'>
+            <thead className='bg-gradient-to-r from-blue-100 to-indigo-100'>
+              <tr>
+                <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'></th>
+                <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'>Nom complet</th>
+                <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'>Date de naissance</th>
+                <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'>Responsable</th>
+                <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'>Téléphone</th>
+                <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'>Statut</th>
+                <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'>Actions</th>
+              </tr>
+            </thead>
+            <tbody className='divide-y divide-gray-200 bg-white/80'>
+              {filteredStudents.map((student) => (
+                <React.Fragment key={student.id}>
+                  <tr 
+                    className='hover:bg-blue-100 hover:bg-opacity-80 transition-all duration-200 cursor-pointer'
+                    onClick={() => toggleRow(student.id)}
+                  >
+                    <td className='px-6 py-4 whitespace-nowrap'>
+                      <button className='text-gray-500 hover:text-gray-700 transition-colors'>
+                        {isRowExpanded(student.id) ? (
+                          <ChevronDown className='h-5 w-5' />
+                        ) : (
+                          <ChevronRight className='h-5 w-5' />
+                        )}
+                      </button>
+                    </td>
+                    <td className='px-6 py-4 whitespace-nowrap'>
+                      <div className='flex items-center space-x-3'>
+                        <div className='relative'>
+                          <div className='w-10 h-10 rounded-full overflow-hidden border-2 border-blue-300'>
+                            {student.photoUrl ? (
+                              <img
+                                src={getPhotoUrl(student.photoUrl)}
+                                alt={`${student.firstName} ${student.lastName}`}
+                                className='w-full h-full object-cover'
+                                onError={(e) => {
+                                  const target = e.currentTarget as HTMLImageElement;
+                                  target.style.display = 'none';
+                                  const sibling = target.nextElementSibling as HTMLElement;
+                                  if (sibling) {
+                                    sibling.style.display = 'flex';
+                                  }
+                                }}
+                              />
+                            ) : null}
+                            <div className={`w-full h-full flex items-center justify-center ${
+                              !student.photoUrl ? 'flex' : 'hidden'
+                            } bg-blue-100`}>
+                              <User className='h-5 w-5 text-blue-600' />
+                            </div>
+                          </div>
+                          {user?.role === 'OWNER' && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openPhotoModal(student);
+                              }}
+                              className='absolute -bottom-1 -right-1 p-1 rounded-full bg-blue-500 hover:bg-blue-600 text-white'
+                              title='Modifier la photo'
+                            >
+                              <Camera className='h-3 w-3' />
+                            </button>
+                          )}
+                        </div>
+                        <div className='flex-1'>
+                          <div className='text-sm font-medium text-gray-900'>
+                            {student.firstName} {student.lastName}
+                          </div>
+                          {student.firstNameArabic && student.lastNameArabic && (
+                            <div className='text-sm text-gray-500'>
+                              {student.firstNameArabic} {student.lastNameArabic}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </td>
+                    <td className='px-6 py-4 whitespace-nowrap text-sm text-gray-900'>
+                      {new Date(student.birthDate).toLocaleDateString('fr-FR')}
+                    </td>
+                    <td className='px-6 py-4 whitespace-nowrap'>
+                      <div>
+                        <div className='text-sm font-medium text-gray-900'>
+                          {student.responsibleName}
+                        </div>
+                        {student.responsibleNameArabic && (
+                          <div className='text-sm text-gray-500'>
+                            {student.responsibleNameArabic}
+                          </div>
+                        )}
+                      </div>
+                    </td>
+                    <td className='px-6 py-4 whitespace-nowrap text-sm text-gray-900'>
+                      {student.responsiblePhone}
+                    </td>
+                    <td className='px-6 py-4 whitespace-nowrap'>
+                      {getStatusBadge(student.status)}
+                    </td>
+                    <td className='px-6 py-4 whitespace-nowrap text-sm font-medium' onClick={(e) => e.stopPropagation()}>
+                      <div className='flex space-x-2'>
+                        {(user?.role === 'OWNER' || !user) && (
+                          <>
+                            <button 
+                              onClick={() => confirmDelete(student)}
+                              className='text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-50'
+                              title='Supprimer'
+                            >
+                              <Trash2 className='h-4 w-4' />
+                            </button>
+                            <button 
+                              onClick={() => {
+                                toggleRow(student.id);
+                                startEditing(student);
+                              }}
+                              className='text-blue-600 hover:text-blue-900 p-1 rounded hover:bg-blue-50'
+                              title='Modifier'
+                            >
+                              <Edit className='h-4 w-4' />
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                  
+                  {/* Expanded Row with Detailed Information */}
+                  {isRowExpanded(student.id) && (
+                    <tr>
+                      <td colSpan={7} className='px-0 py-0'>
+                        <div className='p-6 bg-gradient-to-r from-blue-50 to-indigo-50 border-t border-blue-200'>
+                          <div className='grid grid-cols-1 md:grid-cols-3 gap-6'>
+                            {/* Student Photo Section */}
+                            <div className='space-y-4'>
+                              <div className='relative w-48 h-48 mx-auto rounded-lg overflow-hidden border-4 border-blue-300 shadow-lg shadow-blue-200'>
+                                {student.photoUrl ? (
+                                  <img 
+                                    src={getPhotoUrl(student.photoUrl)} 
+                                    alt={`${student.firstName} ${student.lastName}`}
+                                    className='w-full h-full object-cover'
+                                    onError={(e) => {
+                                      const target = e.currentTarget as HTMLImageElement;
+                                      target.style.display = 'none';
+                                      const sibling = target.nextElementSibling as HTMLElement;
+                                      if (sibling) {
+                                        sibling.style.display = 'flex';
+                                      }
+                                    }}
+                                  />
+                                ) : (
+                                  <div className='w-full h-full flex items-center justify-center bg-blue-100'>
+                                    <User className='h-16 w-16 text-blue-600' />
+                                  </div>
+                                )}
+                                <button 
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    openPhotoModal(student);
+                                  }}
+                                  className='absolute bottom-2 right-2 p-2 rounded-full bg-blue-500 hover:bg-blue-600 text-white'
+                                  title='Modifier la photo'
+                                >
+                                  <Camera className='h-4 w-4' />
+                                </button>
+                              </div>
+                              <div className='text-center'>
+                                <h3 className='text-lg font-semibold text-gray-900'>
+                                  {student.firstName} {student.lastName}
+                                </h3>
+                                {student.firstNameArabic && student.lastNameArabic && (
+                                  <p className='text-sm text-gray-600'>
+                                    {student.firstNameArabic} {student.lastNameArabic}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Student Details - Read Only or Editable Form */}
+                            <div className='md:col-span-2 space-y-4'>
+                              {editingStudent === student.id ? (
+                                // Edit Mode
+                                <>
+                                  <form data-student-id={student.id} onSubmit={(e) => {
+                                     e.preventDefault();
+                                     saveStudent(student);
+                                   }}>
+                                    <div className='flex items-center justify-between mb-4'>
+                                      <h4 className='text-lg font-medium text-gray-900'>Modifier les informations</h4>
+                                      <div className='flex space-x-2'>
+                                        <button
+                                          type='button'
+                                          onClick={cancelEditing}
+                                          className='px-3 py-1 text-sm text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50'
+                                        >
+                                          Annuler
+                                        </button>
+                                        <button
+                                          type='submit'
+                                          className='px-3 py-1 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700'
+                                        >
+                                          Sauvegarder
+                                        </button>
+                                      </div>
+                                    </div>
+                                    
+                                    <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+                                      <div>
+                                        <h4 className='font-medium text-gray-900 mb-2'>Informations personnelles</h4>
+                                        <div className='space-y-3'>
+                                          <div>
+                                            <label className='block text-sm font-medium text-gray-700 mb-1'>Prénom</label>
+                                            <input
+                                              type='text'
+                                              name='firstName'
+                                              defaultValue={student.firstName}
+                                              className='w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500'
+                                            />
+                                          </div>
+                                          <div>
+                                            <label className='block text-sm font-medium text-gray-700 mb-1'>Nom</label>
+                                            <input
+                                              type='text'
+                                              name='lastName'
+                                              defaultValue={student.lastName}
+                                              className='w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500'
+                                            />
+                                          </div>
+                                          <div>
+                                            <label className='block text-sm font-medium text-gray-700 mb-1'>Prénom (arabe)</label>
+                                            <input
+                                              type='text'
+                                              name='firstNameArabic'
+                                              defaultValue={student.firstNameArabic || ''}
+                                              className='w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500'
+                                            />
+                                          </div>
+                                          <div>
+                                            <label className='block text-sm font-medium text-gray-700 mb-1'>Nom (arabe)</label>
+                                            <input
+                                              type='text'
+                                              name='lastNameArabic'
+                                              defaultValue={student.lastNameArabic || ''}
+                                              className='w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500'
+                                            />
+                                          </div>
+                                          <div>
+                                            <label className='block text-sm font-medium text-gray-700 mb-1'>Date de naissance</label>
+                                            <input
+                                              type='date'
+                                              name='birthDate'
+                                              defaultValue={student.birthDate}
+                                              className='w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500'
+                                            />
+                                          </div>
+                                        </div>
+                                      </div>
+
+                                      <div>
+                                        <h4 className='font-medium text-gray-900 mb-2'>Contact du responsable</h4>
+                                        <div className='space-y-3'>
+                                          <div>
+                                            <label className='block text-sm font-medium text-gray-700 mb-1'>Nom du responsable</label>
+                                            <input
+                                              type='text'
+                                              name='responsibleName'
+                                              defaultValue={student.responsibleName}
+                                              className='w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500'
+                                            />
+                                          </div>
+                                          <div>
+                                            <label className='block text-sm font-medium text-gray-700 mb-1'>Nom du responsable (arabe)</label>
+                                            <input
+                                              type='text'
+                                              name='responsibleNameArabic'
+                                              defaultValue={student.responsibleNameArabic || ''}
+                                              className='w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500'
+                                            />
+                                          </div>
+                                          <div>
+                                            <label className='block text-sm font-medium text-gray-700 mb-1'>Téléphone</label>
+                                            <input
+                                              type='tel'
+                                              name='responsiblePhone'
+                                              defaultValue={student.responsiblePhone}
+                                              className='w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500'
+                                            />
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </form>
+                                </>
+                              ) : (
+                                // Read Only Mode
+                                <>
+                                  <div className='flex items-center justify-between mb-4'>
+                                    <h4 className='text-lg font-medium text-gray-900'>Informations détaillées</h4>
+                                  </div>
+                                  
+                                  <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+                                    <div>
+                                      <h4 className='font-medium text-gray-900 mb-2'>Informations personnelles</h4>
+                                      <div className='space-y-2 text-sm'>
+                                        <div>
+                                          <span className='font-medium text-gray-600'>Date de naissance:</span>
+                                          <span className='ml-2 text-gray-900'>
+                                            {new Date(student.birthDate).toLocaleDateString('fr-FR')}
+                                          </span>
+                                        </div>
+                                        <div>
+                                          <span className='font-medium text-gray-600'>Âge:</span>
+                                          <span className='ml-2 text-gray-900'>
+                                            {new Date().getFullYear() - new Date(student.birthDate).getFullYear()} ans
+                                          </span>
+                                        </div>
+                                        <div>
+                                          <span className='font-medium text-gray-600'>Statut:</span>
+                                          <span className='ml-2'>{getStatusBadge(student.status)}</span>
+                                        </div>
+                                      </div>
+                                    </div>
+
+                                    <div>
+                                      <h4 className='font-medium text-gray-900 mb-2'>Contact du responsable</h4>
+                                      <div className='space-y-2 text-sm'>
+                                        <div>
+                                          <span className='font-medium text-gray-600'>Nom:</span>
+                                          <span className='ml-2 text-gray-900'>{student.responsibleName}</span>
+                                        </div>
+                                        {student.responsibleNameArabic && (
+                                          <div>
+                                            <span className='font-medium text-gray-600'>Nom (arabe):</span>
+                                            <span className='ml-2 text-gray-900'>{student.responsibleNameArabic}</span>
+                                          </div>
+                                        )}
+                                        <div>
+                                          <span className='font-medium text-gray-600'>Téléphone:</span>
+                                          <span className='ml-2 text-gray-900'>{student.responsiblePhone}</span>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </React.Fragment>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        {filteredStudents.length === 0 && (
+          <div className='text-center py-8 text-gray-500'>
+            Aucun étudiant trouvé avec ces critères
+          </div>
+        )}
+      </div>
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && (
+        <div className='fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50'>
+          <div className='bg-white rounded-lg p-6 max-w-md w-full mx-4'>
+            <h3 className='text-lg font-medium text-gray-900 mb-4'>
+              Confirmer la suppression
+            </h3>
+            <p className='text-gray-600 mb-6'>
+              Êtes-vous sûr de vouloir supprimer {studentToDelete?.firstName} {studentToDelete?.lastName} ? 
+              Cette action est irréversible.
+            </p>
+            <div className='flex justify-end space-x-3'>
+              <button
+                onClick={() => setShowDeleteModal(false)}
+                className='px-4 py-2 text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300'
+              >
+                Annuler
+              </button>
+              <button
+                onClick={executeDelete}
+                className='px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700'
+              >
+                Supprimer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Photo Modal */}
+      {showPhotoModal && selectedStudent && (
+        <PhotoModal
+          student={selectedStudent}
+          onClose={() => {
+            setShowPhotoModal(false);
+            setSelectedStudent(null);
+          }}
+          onUpdatePhoto={handleUpdatePhoto}
+          onUploadFile={handleUploadFile}
+          onUploadCamera={handleUploadCamera}
+        />
+      )}
+    </div>
+  );
+};
+
+export default ExtraStudentsPage;

@@ -1,0 +1,53 @@
+spring:
+  application:
+    name: linarqa-backend
+
+  profiles:
+    active: dev
+
+  datasource:
+    url: jdbc:mysql://localhost:3306/linarqa?useSSL=false&serverTimezone=Africa/Casablanca&allowPublicKeyRetrieval=true
+    username: root
+    password: 
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQLDialect
+        format_sql: true
+        jdbc:
+          batch_size: 20
+        order_inserts: true
+        order_updates: true
+
+server:
+  port: 8080
+
+jwt:
+  secret: bGluYXJxYS1zdXBlci1zZWNyZXQtand0LWtleS0yMDI0LXByb2R1Y3Rpb24tcmVhZHk=
+  expiration: 86400000
+  refresh-expiration: 604800000
+
+cors:
+  allowed-origins: 
+    - http://localhost:5173
+    - http://127.0.0.1:5173
+  allowed-methods:
+    - GET
+    - POST
+    - PUT
+    - PATCH
+    - DELETE
+    - OPTIONS
+  allowed-headers:
+    - "*"
+  allow-credentials: true
+
+logging:
+  level:
+    com.linarqa: DEBUG
+    org.springframework.security: DEBUG

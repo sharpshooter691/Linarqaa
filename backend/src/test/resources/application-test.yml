@@ -1,0 +1,33 @@
+spring:
+  application:
+    name: linarqa-backend-test
+
+  datasource:
+    url: jdbc:h2:mem:testdb
+    username: sa
+    password: 
+    driver-class-name: org.h2.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: true
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect
+        format_sql: true
+
+  h2:
+    console:
+      enabled: true
+
+jwt:
+  secret: dGVzdC1zZWNyZXQtand0LWtleS1mb3ItdGVzdGluZy1wdXJwb3Nlcy1vbmx5
+  expiration: 86400000
+  refresh-expiration: 604800000
+
+logging:
+  level:
+    com.linarqa: DEBUG
+    org.springframework.security: DEBUG
+    org.hibernate: DEBUG 
